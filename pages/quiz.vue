@@ -1,4 +1,3 @@
-
 <script setup>
 import { ref, onMounted } from "vue";
 
@@ -7,6 +6,7 @@ const playerName = ref("");
 const gamePIN = ref("");
 const question = ref(null);
 const errorMessage = ref("");
+const hasJoined = ref(false); // Track if the player has joined
 
 onMounted(() => {
   ws.value = new WebSocket("ws://localhost:3001");
@@ -18,6 +18,8 @@ onMounted(() => {
       question.value = data.question;
     } else if (data.type === "error") {
       errorMessage.value = data.message;
+    } else if (data.type === "player-joined") {
+      hasJoined.value = true; // Hide login form after joining
     }
   };
 });
@@ -33,15 +35,18 @@ const joinGame = () => {
 
 <template>
   <div class="quiz-container">
-    <h1>Join Game</h1>
-    <input v-model="playerName" placeholder="Enter Name" />
-    <input v-model="gamePIN" placeholder="Enter Game PIN" />
-    <button @click="joinGame">Join</button>
-    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+    <h1 v-if="!hasJoined">Join Game</h1>
 
-    <div v-if="question">
-      <h2>{{ question.question }}</h2>
-      <ul>
+    <div v-if="!hasJoined">
+      <input v-model="playerName" placeholder="Enter Name" />
+      <input v-model="gamePIN" placeholder="Enter Game PIN" />
+      <button @click="joinGame">Join</button>
+      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+    </div>
+
+    <div v-else>
+      <h2 v-if="question">{{ question.question }}</h2>
+      <ul v-if="question">
         <li v-for="(option, index) in question.options" :key="index">
           {{ option }}
         </li>
@@ -67,4 +72,3 @@ button {
   color: red;
 }
 </style>
-
