@@ -8,22 +8,12 @@ const hasAnswered = ref(false); // Prevents multiple answers
 const waitingForNext = ref(false); // Indicates waiting state
 
 onMounted(() => {
-  ws.value = new WebSocket("ws://localhost:3001");
+    const wsUrl = import.meta.env.VITE_WS_URL || "ws://localhost:3001"; // Use environment variable
+    ws.value = new WebSocket(wsUrl);
 
-  ws.value.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-
-    if (message.type === "next-question") {
-      currentQuestion.value = message.question;
-      selectedAnswer.value = null;
-      hasAnswered.value = false;
-      waitingForNext.value = false;
-    }
-
-    if (message.type === "quiz-finished") {
-      currentQuestion.value = null;
-    }
-  };
+    ws.value.onopen = () => console.log("✅ WebSocket connected!");
+    ws.value.onerror = (error) => console.error("❌ WebSocket error:", error);
+    ws.value.onclose = () => console.warn("⚠️ WebSocket closed. Attempting to reconnect...");
 });
 
 function submitAnswer(index) {

@@ -7,34 +7,23 @@ const correctAnswer = ref(null);
 const playerAnswers = ref([]);
 
 onMounted(() => {
-    ws.value = new WebSocket("ws://localhost:3001");
+    const wsUrl = import.meta.env.VITE_WS_URL || "ws://localhost:3001"; // Use environment variable
+    ws.value = new WebSocket(wsUrl);
 
-    ws.value.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        console.log("📩 Message received:", message); // Debugging output
-
-        if (message.type === "next-question") {
-            currentQuestion.value = message.question || null;
-            correctAnswer.value = null;
-            playerAnswers.value = [];
-            console.log("✅ New question set:", currentQuestion.value);
-        }
-
-        else if (message.type === "show-correct-answer") {
-            correctAnswer.value = message.correctAnswer;
-            playerAnswers.value = message.answers || [];
-            console.log("✅ Showing correct answer:", correctAnswer.value);
-        }
-    };
+    ws.value.onopen = () => console.log("✅ WebSocket connected!");
+    ws.value.onerror = (error) => console.error("❌ WebSocket error:", error);
+    ws.value.onclose = () => console.warn("⚠️ WebSocket closed. Attempting to reconnect...");
 });
+
 </script>
 
 <template>
     <div v-if="currentQuestion">
         <h2>{{ currentQuestion.question }}</h2>
         <ul>
-            <li v-for="option in currentQuestion.options" :key="option"
-                :class="{ correct: correctAnswer === option }">
+            <li v-for="(option, index) in currentQuestion.options"
+                :key="index"
+                :class="{ correct: correctAnswer === index }"> <!-- Compare indexes, not text -->
                 {{ option }}
             </li>
         </ul>

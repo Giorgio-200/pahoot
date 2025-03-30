@@ -61,6 +61,14 @@ wss.on("connection", (ws) => {
             setTimeout(() => {
                 sendNextQuestion();
             }, 3000); // Delay to show correct answer before next question
+
+            setInterval(() => {
+              wss.clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify({ type: "ping" })); // Send a heartbeat ping
+                }
+              });
+            }, 30000);
         }
     }
     
@@ -85,8 +93,21 @@ function sendNextQuestion() {
   }
 }
 
+function showCorrectAnswer() {
+  const correctIndex = currentQuestion.correct; // Ensure we get the correct index
+  const correctAnswer = currentQuestion.options[correctIndex];
 
+  // Send correct answer to all clients
+  broadcast({
+    type: "show-correct-answer",
+    correctAnswer: correctIndex, // Send index, not text
+    answers: playerAnswers
+  });
 
+  setTimeout(() => {
+    sendNextQuestion(); // Automatically go to the next question
+  }, 5000); // Wait 5 seconds before next question
+}
 
 
 function sendResults() {
