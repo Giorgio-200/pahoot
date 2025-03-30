@@ -4,6 +4,13 @@ import { ref, onMounted, onUnmounted } from 'vue';
 const ws = ref(null);
 const reconnectInterval = 5000; // 5 seconds
 
+const startQuiz = () => {
+    if (ws.value) {
+        ws.value.send(JSON.stringify({ type: "start-quiz" }));
+    }
+};
+
+
 function connectWebSocket() {
   ws.value = new WebSocket('ws://localhost:3001');
 
@@ -36,9 +43,12 @@ onUnmounted(() => {
     ws.value.close();
   }
 });
+
+
 </script>
 
 <template>
+    <button @click="startQuiz">Start Quiz</button>
     <div v-if="currentQuestion">
         <h2>{{ currentQuestion.question }}</h2>
         <ul>

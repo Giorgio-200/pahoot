@@ -4,6 +4,9 @@ import { ref, onMounted, onUnmounted } from 'vue';
 const ws = ref(null);
 const reconnectInterval = 5000; // 5 seconds
 
+const currentQuestion = ref(null);
+const waitingForNext = ref(null);
+
 function connectWebSocket() {
   ws.value = new WebSocket('ws://localhost:3001');
 
