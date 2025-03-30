@@ -1,19 +1,40 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from 'vue';
 
 const ws = ref(null);
-const currentQuestion = ref(null);
-const selectedAnswer = ref(null);
-const hasAnswered = ref(false); // Prevents multiple answers
-const waitingForNext = ref(false); // Indicates waiting state
+const reconnectInterval = 5000; // 5 seconds
+
+function connectWebSocket() {
+  ws.value = new WebSocket('ws://localhost:3001');
+
+  ws.value.onopen = () => {
+    console.log('WebSocket connected');
+    // Additional setup if needed
+  };
+
+  ws.value.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    // Handle incoming messages
+  };
+
+  ws.value.onerror = (error) => {
+    console.error('WebSocket error:', error);
+  };
+
+  ws.value.onclose = () => {
+    console.warn('WebSocket closed. Reconnecting in 5 seconds...');
+    setTimeout(connectWebSocket, reconnectInterval);
+  };
+}
 
 onMounted(() => {
-    const wsUrl = import.meta.env.VITE_WS_URL || "ws://localhost:3001"; // Use environment variable
-    ws.value = new WebSocket(wsUrl);
+  connectWebSocket();
+});
 
-    ws.value.onopen = () => console.log("✅ WebSocket connected!");
-    ws.value.onerror = (error) => console.error("❌ WebSocket error:", error);
-    ws.value.onclose = () => console.warn("⚠️ WebSocket closed. Attempting to reconnect...");
+onUnmounted(() => {
+  if (ws.value) {
+    ws.value.close();
+  }
 });
 
 function submitAnswer(index) {

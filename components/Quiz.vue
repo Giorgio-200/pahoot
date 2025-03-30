@@ -20,25 +20,34 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 
-const ws = new WebSocket('ws://localhost:3001');
-const gameStarted = ref(false);
-const question = ref(null);
+const ws = ref(null);
+const messageQueue = ref([]);
 
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-
-  if (data.type === 'game-started') {
-    gameStarted.value = true;
+function processMessageQueue() {
+  while (messageQueue.value.length > 0) {
+    const message = messageQueue.value.shift();
+    // Process the message
   }
+}
 
-  if (data.type === 'question') {
-    question.value = data.question;
+onMounted(() => {
+  ws.value = new WebSocket('ws://localhost:3001');
+
+  ws.value.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    messageQueue.value.push(message);
+    processMessageQueue();
+  };
+
+  // Other event handlers (onopen, onerror, onclose)
+});
+
+onUnmounted(() => {
+  if (ws.value) {
+    ws.value.close();
   }
-};
+});
 
-const submitAnswer = (index) => {
-  ws.send(JSON.stringify({ type: 'answer', answerIndex: index }));
-};
 </script>
