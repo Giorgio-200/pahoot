@@ -57,7 +57,7 @@ onUnmounted(() => {
         </ul>
     </div>
     <div v-else>
-        <h2>Waiting for the quiz to start...</h2>
+        <h2>Loading...</h2>
     </div>
 </template>
 
