@@ -30,8 +30,8 @@ onMounted(() => {
 </script>
 
 <template>
-    <div>
-        <h2 v-if="currentQuestion">{{ currentQuestion.question }}</h2>
+    <div v-if="currentQuestion">
+        <h2>{{ currentQuestion.question }}</h2>
         <ul>
             <li v-for="option in currentQuestion.options" :key="option"
                 :class="{ correct: correctAnswer === option }">
@@ -46,7 +46,11 @@ onMounted(() => {
             </li>
         </ul>
     </div>
+    <div v-else>
+        <h2>Waiting for the quiz to start...</h2>
+    </div>
 </template>
+
 
 <style scoped>
 .correct {

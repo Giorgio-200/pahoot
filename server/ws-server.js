@@ -74,21 +74,17 @@ wss.on("connection", (ws) => {
 });
 
 function sendNextQuestion() {
-    if (currentQuestionIndex >= questions.length) {
-        showResults();
-        return;
-    }
-
-    const question = questions[currentQuestionIndex];
-    console.log("🚀 Sending question:", question); // Debugging output
-
+  if (currentQuestionIndex < questions.length) {
+    const question = questions[currentQuestionIndex]; // Don't shift, just reference
     broadcast({
-        type: "next-question",
-        question: question
+      type: "next-question",
+      question: question // Send full object
     });
-
-    currentQuestionIndex++;
+  } else {
+    sendResults();
+  }
 }
+
 
 
 
