@@ -1,84 +1,70 @@
+
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted } from "vue";
 
 const ws = ref(null);
-const reconnectInterval = 5000; // 5 seconds
-
-const currentQuestion = ref(null);
-const waitingForNext = ref(null);
-
-function connectWebSocket() {
-  ws.value = new WebSocket('ws://localhost:3001');
-
-  ws.value.onopen = () => {
-    console.log('WebSocket connected');
-    // Additional setup if needed
-  };
-
-  ws.value.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    // Handle incoming messages
-  };
-
-  ws.value.onerror = (error) => {
-    console.error('WebSocket error:', error);
-  };
-
-  ws.value.onclose = () => {
-    console.warn('WebSocket closed. Reconnecting in 5 seconds...');
-    setTimeout(connectWebSocket, reconnectInterval);
-  };
-}
+const playerName = ref("");
+const gamePIN = ref("");
+const question = ref(null);
+const errorMessage = ref("");
 
 onMounted(() => {
-  connectWebSocket();
+  ws.value = new WebSocket("ws://localhost:3001");
+
+  ws.value.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+
+    if (data.type === "next-question") {
+      question.value = data.question;
+    } else if (data.type === "error") {
+      errorMessage.value = data.message;
+    }
+  };
 });
 
-onUnmounted(() => {
-  if (ws.value) {
-    ws.value.close();
+const joinGame = () => {
+  if (!playerName.value || !gamePIN.value) {
+    errorMessage.value = "Please enter a name and PIN.";
+    return;
   }
-});
-
-function submitAnswer(index) {
-    ws.send(JSON.stringify({ type: "submit-answer", answer: index }));
-    selectedAnswer.value = index;
-}
+  ws.value.send(JSON.stringify({ type: "join-game", name: playerName.value, pin: gamePIN.value }));
+};
 </script>
 
 <template>
-  <div class="p-6 bg-gray-900 text-white">
-    <h1 class="text-3xl font-bold mb-4">Quiz</h1>
+  <div class="quiz-container">
+    <h1>Join Game</h1>
+    <input v-model="playerName" placeholder="Enter Name" />
+    <input v-model="gamePIN" placeholder="Enter Game PIN" />
+    <button @click="joinGame">Join</button>
+    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
-    <div v-if="currentQuestion">
-      <h2 class="text-xl font-semibold">{{ currentQuestion.question }}</h2>
-
-      <ul class="mt-4">
-        <li 
-          v-for="option in currentQuestion.options" 
-          :key="option"
-          class="p-2 border rounded-lg my-2 cursor-pointer"
-          :class="{
-            'bg-blue-500 text-white': selectedAnswer === option,
-            'hover:bg-gray-700': !hasAnswered
-          }"
-          @click="submitAnswer(option)"
-        >
+    <div v-if="question">
+      <h2>{{ question.question }}</h2>
+      <ul>
+        <li v-for="(option, index) in question.options" :key="index">
           {{ option }}
         </li>
       </ul>
     </div>
-
-    <p v-if="waitingForNext" class="text-yellow-400 mt-4">
-      Waiting for the next question...
-    </p>
-
-    <p v-if="!currentQuestion" class="text-green-400 mt-4">
-      The quiz has ended!
-    </p>
   </div>
 </template>
 
 <style scoped>
-
+.quiz-container {
+  text-align: center;
+}
+input {
+  display: block;
+  margin: 10px auto;
+  padding: 5px;
+}
+button {
+  padding: 10px;
+  cursor: pointer;
+}
+.error {
+  color: red;
+}
 </style>
+

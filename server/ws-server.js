@@ -1,3 +1,4 @@
+
 import { WebSocketServer } from "ws";
 
 const wss = new WebSocketServer({ port: 3001 });
@@ -7,17 +8,22 @@ let questions = [
   { question: "What is 2 + 2?", options: ["3", "4", "5", "6"], correct: 1 },
   { question: "What is the capital of France?", options: ["Berlin", "Paris", "Madrid", "Rome"], correct: 1 },
 ];
-let correctAnswer = null;
-let answers = [];
-
 let currentQuestionIndex = -1;
+let gamePIN = Math.floor(1000 + Math.random() * 9000).toString(); // Generate a 4-digit PIN
 
 wss.on("connection", (ws) => {
+  // Send game PIN to new connections
+  ws.send(JSON.stringify({ type: "game-pin", pin: gamePIN }));
+
   ws.on("message", (data) => {
     const message = JSON.parse(data);
     console.log("📩 Received:", message);
 
     if (message.type === "join-game") {
+      if (message.pin !== gamePIN) {
+        ws.send(JSON.stringify({ type: "error", message: "Invalid PIN" }));
+        return;
+      }
       players.set(ws, { name: message.name, score: 0, answered: false });
       console.log(`🔹 Player joined: ${message.name} (PIN: ${message.pin})`);
       broadcast({ type: "player-joined", name: message.name });
@@ -30,49 +36,33 @@ wss.on("connection", (ws) => {
     }
 
     else if (message.type === "submit-answer") {
-        const player = players.get(ws);
-        if (!player) return;
-    
-        // Store answer and mark player as answered
-        player.answered = true;
-        player.lastAnswer = message.answer; // Store for reference
-    
-        // Check if correct
-        const correctAnswerIndex = questions[currentQuestionIndex].correct;
-        if (message.answer === correctAnswerIndex) {
-            player.score += 10;
-        }
-    
-        // Check if all players have answered
-        const allAnswered = [...players.values()].every(p => p.answered);
-    
-        if (allAnswered) {
-            // Send correct answer and other responses to server.vue
-            const answerData = {
-                type: "show-correct-answer",
-                correctAnswer: correctAnswerIndex,
-                answers: [...players.values()].map(p => ({
-                    name: p.name,
-                    answer: p.lastAnswer
-                }))
-            };
-            broadcast(answerData);
-    
-            setTimeout(() => {
-                sendNextQuestion();
-            }, 3000); // Delay to show correct answer before next question
+      const player = players.get(ws);
+      if (!player) return;
 
-            setInterval(() => {
-              wss.clients.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                  client.send(JSON.stringify({ type: "ping" })); // Send a heartbeat ping
-                }
-              });
-            }, 30000);
-        }
+      player.answered = true;
+      player.lastAnswer = message.answer;
+
+      const correctAnswerIndex = questions[currentQuestionIndex].correct;
+      if (message.answer === correctAnswerIndex) {
+        player.score += 10;
+      }
+
+      const allAnswered = [...players.values()].every(p => p.answered);
+      if (allAnswered) {
+        broadcast({
+          type: "show-correct-answer",
+          correctAnswer: correctAnswerIndex,
+          answers: [...players.values()].map(p => ({
+            name: p.name,
+            answer: p.lastAnswer
+          }))
+        });
+
+        setTimeout(() => {
+          sendNextQuestion();
+        }, 3000);
+      }
     }
-    
-    
   });
 
   ws.on("close", () => {
@@ -83,32 +73,15 @@ wss.on("connection", (ws) => {
 
 function sendNextQuestion() {
   if (currentQuestionIndex < questions.length) {
-    const question = questions[currentQuestionIndex]; // Don't shift, just reference
     broadcast({
       type: "next-question",
-      question: question // Send full object
+      question: questions[currentQuestionIndex]
     });
+    currentQuestionIndex++;
   } else {
     sendResults();
   }
 }
-
-function showCorrectAnswer() {
-  const correctIndex = currentQuestion.correct; // Ensure we get the correct index
-  const correctAnswer = currentQuestion.options[correctIndex];
-
-  // Send correct answer to all clients
-  broadcast({
-    type: "show-correct-answer",
-    correctAnswer: correctIndex, // Send index, not text
-    answers: playerAnswers
-  });
-
-  setTimeout(() => {
-    sendNextQuestion(); // Automatically go to the next question
-  }, 5000); // Wait 5 seconds before next question
-}
-
 
 function sendResults() {
   const leaderboard = Array.from(players.values()).sort((a, b) => b.score - a.score);
@@ -117,6 +90,9 @@ function sendResults() {
 
 function broadcast(message) {
   wss.clients.forEach((client) => {
-    client.send(JSON.stringify(message));
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(message));
+    }
   });
 }
+

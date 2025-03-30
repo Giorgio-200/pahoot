@@ -1,7 +1,7 @@
 <script setup>
 import { navigateTo } from "#app";
 
-navigateTo("/login"); // Redirects immediately
+navigateTo("/quiz"); // Redirects immediately
 </script>
 
 <template>
